@@ -1,16 +1,17 @@
 import { supabase } from "../lib/supabaseClient";
 
 export default async function Home() {
-  // Fetch posts from Supabase
   const { data: posts, error } = await supabase
     .from("posts")
     .select("*")
     .order("created_at", { ascending: false });
 
-  if (error) return <div className="p-8 text-red-500">Error loading posts: {error.message}</div>;
+  if (error) {
+    return <div className="min-h-screen p-8 text-red-600">Error loading posts: {error.message}</div>;
+  }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black p-8 font-sans">
+    <div className="min-h-screen p-8 bg-zinc-50 dark:bg-black font-sans">
       <h1 className="text-4xl font-bold mb-8 text-center text-black dark:text-white">
         Action Sports News
       </h1>
@@ -27,9 +28,18 @@ export default async function Home() {
               <h2 className="text-xl font-semibold mb-2 text-black dark:text-white">
                 {post.title}
               </h2>
+              {post.game && (
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                  Game: {post.game}
+                </p>
+              )}
               <p className="text-zinc-700 dark:text-zinc-300">{post.content}</p>
               {post.image_url && (
-                <img src={post.image_url} alt={post.title} className="mt-2 rounded w-full" />
+                <img
+                  src={post.image_url}
+                  alt={post.title}
+                  className="mt-2 rounded w-full"
+                />
               )}
             </div>
           ))}
