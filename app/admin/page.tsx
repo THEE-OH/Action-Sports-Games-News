@@ -1,151 +1,181 @@
-"use client"; // must be client component for interactivity
-import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabaseClient";
+"use client";
+
+import { useState, useEffect } from "react";
+import { supabase } from "../../lib/supabaseClient"; // fixed import path
 
 interface Post {
-  id: number;
+  id: string;
   title: string;
   content: string;
-  game?: string;
-  image_url?: string;
+  game: string;
+  image_url: string;
 }
 
-export default function AdminPage() {
+// Simple password wrapper
+function AdminPageWrapper({ children }: { children: React.ReactNode }) {
+  const [password, setPassword] = useState("");
+  const [authorized, setAuthorized] = useState(false);
+
+  const checkPassword = () => {
+    const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "changeme";
+    if (password === ADMIN_PASSWORD) setAuthorized(true);
+    else alert("Wrong password!");
+  };
+
+  if (!authorized)
+    return (
+      <div className="p-6">
+        <h1 className="text-2xl font-bold mb-4">Enter Admin Password</h1>
+        <input
+          type="password"
+          className="border p-2 mr-2"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <button
+          className="bg-blue-500 text-white px-3 py-1 rounded"
+          onClick={checkPassword}
+        >
+          Enter
+        </button>
+      </div>
+    );
+
+  return <>{children}</>;
+}
+
+// Admin panel with full CRUD
+function AdminPanel() {
   const [posts, setPosts] = useState<Post[]>([]);
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [game, setGame] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
-  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const [newTitle, setNewTitle] = useState("");
+  const [newContent, setNewContent] = useState("");
+  const [newGame, setNewGame] = useState("");
+  const [newImage, setNewImage] = useState("");
 
   // Fetch posts
   const fetchPosts = async () => {
-    const { data, error } = await supabase.from("posts").select("*").order("created_at", { ascending: false });
-    if (error) setMessage(`Error fetching posts: ${error.message}`);
-    else setPosts(data as Post[]);
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("posts")
+      .select("*")
+      .order("id", { ascending: true });
+    if (error) console.error("Fetch error:", error);
+    else setPosts(data || []);
+    setLoading(false);
   };
 
   useEffect(() => {
     fetchPosts();
   }, []);
 
-  // Add new post
-  const addPost = async () => {
-    if (!title || !content) {
-      setMessage("Title and content are required.");
+  // Add post
+  const handleAddPost = async () => {
+    if (!newTitle || !newContent) {
+      alert("Title and content are required");
       return;
     }
-
-    const { error } = await supabase.from("posts").insert([{ title, content, game, image_url: imageUrl }]);
-    if (error) setMessage(`Error adding post: ${error.message}`);
+    const { error } = await supabase.from("posts").insert([
+      { title: newTitle, content: newContent, game: newGame, image_url: newImage },
+    ]);
+    if (error) console.error("Insert error:", error);
     else {
-      setMessage("Post added!");
-      setTitle("");
-      setContent("");
-      setGame("");
-      setImageUrl("");
+      setNewTitle("");
+      setNewContent("");
+      setNewGame("");
+      setNewImage("");
       fetchPosts();
     }
   };
 
   // Delete post
-  const deletePost = async (id: number) => {
+  const handleDelete = async (id: string) => {
     const { error } = await supabase.from("posts").delete().eq("id", id);
-    if (error) setMessage(`Error deleting post: ${error.message}`);
+    if (error) console.error("Delete error:", error);
     else fetchPosts();
   };
 
   // Update post
-  const updatePost = async (id: number) => {
+  const handleUpdate = async (post: Post) => {
+    const newTitle = prompt("New title:", post.title) || post.title;
+    const newContent = prompt("New content:", post.content) || post.content;
+    const newGame = prompt("New game:", post.game) || post.game;
+    const newImage = prompt("New image URL:", post.image_url) || post.image_url;
+
     const { error } = await supabase
       .from("posts")
-      .update({ title, content, game, image_url: imageUrl })
-      .eq("id", id);
+      .update({ title: newTitle, content: newContent, game: newGame, image_url: newImage })
+      .eq("id", post.id);
 
-    if (error) setMessage(`Error updating post: ${error.message}`);
-    else {
-      setMessage("Post updated!");
-      setTitle("");
-      setContent("");
-      setGame("");
-      setImageUrl("");
-      fetchPosts();
-    }
+    if (error) console.error("Update error:", error);
+    else fetchPosts();
   };
 
-  return (
-    <div className="min-h-screen p-8 bg-zinc-50 dark:bg-black font-sans">
-      <h1 className="text-3xl font-bold mb-6 text-black dark:text-white">Admin Panel</h1>
+  if (loading) return <div>Loading posts...</div>;
 
-      {/* Add / Edit Post Form */}
-      <div className="space-y-4 max-w-lg mb-8">
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Admin Panel</h1>
+
+      {/* Add new post */}
+      <div className="mb-6 p-4 border rounded-lg bg-gray-50 dark:bg-gray-900">
+        <h2 className="text-xl font-semibold mb-2">Add New Post</h2>
         <input
-          className="w-full p-2 border rounded"
+          className="border p-2 w-full mb-2"
           placeholder="Title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          value={newTitle}
+          onChange={(e) => setNewTitle(e.target.value)}
         />
         <textarea
-          className="w-full p-2 border rounded"
+          className="border p-2 w-full mb-2"
           placeholder="Content"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
+          value={newContent}
+          onChange={(e) => setNewContent(e.target.value)}
         />
         <input
-          className="w-full p-2 border rounded"
-          placeholder="Game (optional)"
-          value={game}
-          onChange={(e) => setGame(e.target.value)}
+          className="border p-2 w-full mb-2"
+          placeholder="Game"
+          value={newGame}
+          onChange={(e) => setNewGame(e.target.value)}
         />
         <input
-          className="w-full p-2 border rounded"
-          placeholder="Image URL (optional)"
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
+          className="border p-2 w-full mb-2"
+          placeholder="Image URL"
+          value={newImage}
+          onChange={(e) => setNewImage(e.target.value)}
         />
-        <button
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          onClick={addPost}
-        >
+        <button className="bg-green-600 text-white px-4 py-2 rounded" onClick={handleAddPost}>
           Add Post
         </button>
-        {message && <p className="mt-2 text-zinc-700 dark:text-zinc-300">{message}</p>}
       </div>
 
-      {/* Existing Posts List */}
-      <div className="space-y-4 max-w-3xl">
-        {posts.length === 0 ? (
-          <p className="text-zinc-700 dark:text-zinc-300">No posts yet.</p>
-        ) : (
-          posts.map((post) => (
-            <div key={post.id} className="border rounded-lg p-4 bg-white dark:bg-gray-900 shadow">
-              <h2 className="text-xl font-semibold mb-1 text-black dark:text-white">{post.title}</h2>
-              {post.game && <p className="text-sm text-zinc-600 dark:text-zinc-400">Game: {post.game}</p>}
-              <p className="text-zinc-700 dark:text-zinc-300">{post.content}</p>
-              {post.image_url && <img src={post.image_url} alt={post.title} className="mt-2 rounded w-full" />}
-              <div className="mt-2 flex gap-2">
-                <button
-                  className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600"
-                  onClick={() => {
-                    setTitle(post.title);
-                    setContent(post.content);
-                    setGame(post.game || "");
-                    setImageUrl(post.image_url || "");
-                  }}
-                >
-                  Edit
-                </button>
-                <button
-                  className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
-                  onClick={() => deletePost(post.id)}
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+      {/* Existing posts */}
+      {posts.map((post) => (
+        <div key={post.id} className="mb-4 p-4 border rounded-lg">
+          <h2 className="text-xl font-semibold">{post.title}</h2>
+          <p className="mb-1">{post.content}</p>
+          <p className="mb-1 text-sm text-gray-500">Game: {post.game}</p>
+          {post.image_url && <img src={post.image_url} alt={post.title} className="mb-2 max-w-xs" />}
+          <div className="flex gap-2">
+            <button className="bg-red-500 text-white px-3 py-1 rounded" onClick={() => handleDelete(post.id)}>
+              Delete
+            </button>
+            <button className="bg-blue-500 text-white px-3 py-1 rounded" onClick={() => handleUpdate(post)}>
+              Edit
+            </button>
+          </div>
+        </div>
+      ))}
     </div>
+  );
+}
+
+// Export page
+export default function Page() {
+  return (
+    <AdminPageWrapper>
+      <AdminPanel />
+    </AdminPageWrapper>
   );
 }
