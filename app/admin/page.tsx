@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { supabase } from "../../lib/supabaseClient"; // fixed import path
+import { supabase } from "../../lib/supabaseClient"; // adjust path if needed
 
 interface Post {
   id: string;
@@ -11,41 +11,7 @@ interface Post {
   image_url: string;
 }
 
-// Simple password wrapper
-function AdminPageWrapper({ children }: { children: React.ReactNode }) {
-  const [password, setPassword] = useState("");
-  const [authorized, setAuthorized] = useState(false);
-
-  const checkPassword = () => {
-    const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "changeme";
-    if (password === ADMIN_PASSWORD) setAuthorized(true);
-    else alert("Wrong password!");
-  };
-
-  if (!authorized)
-    return (
-      <div className="p-6">
-        <h1 className="text-2xl font-bold mb-4">Enter Admin Password</h1>
-        <input
-          type="password"
-          className="border p-2 mr-2"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <button
-          className="bg-blue-500 text-white px-3 py-1 rounded"
-          onClick={checkPassword}
-        >
-          Enter
-        </button>
-      </div>
-    );
-
-  return <>{children}</>;
-}
-
-// Admin panel with full CRUD
-function AdminPanel() {
+export default function AdminPanel() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -70,14 +36,19 @@ function AdminPanel() {
     fetchPosts();
   }, []);
 
-  // Add post
+  // Add a new post
   const handleAddPost = async () => {
     if (!newTitle || !newContent) {
       alert("Title and content are required");
       return;
     }
     const { error } = await supabase.from("posts").insert([
-      { title: newTitle, content: newContent, game: newGame, image_url: newImage },
+      {
+        title: newTitle,
+        content: newContent,
+        game: newGame,
+        image_url: newImage,
+      },
     ]);
     if (error) console.error("Insert error:", error);
     else {
@@ -89,14 +60,14 @@ function AdminPanel() {
     }
   };
 
-  // Delete post
+  // Delete a post
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from("posts").delete().eq("id", id);
     if (error) console.error("Delete error:", error);
     else fetchPosts();
   };
 
-  // Update post
+  // Update a post
   const handleUpdate = async (post: Post) => {
     const newTitle = prompt("New title:", post.title) || post.title;
     const newContent = prompt("New content:", post.content) || post.content;
@@ -107,7 +78,6 @@ function AdminPanel() {
       .from("posts")
       .update({ title: newTitle, content: newContent, game: newGame, image_url: newImage })
       .eq("id", post.id);
-
     if (error) console.error("Update error:", error);
     else fetchPosts();
   };
@@ -118,9 +88,10 @@ function AdminPanel() {
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Admin Panel</h1>
 
-      {/* Add new post */}
+      {/* Add new post form */}
       <div className="mb-6 p-4 border rounded-lg bg-gray-50 dark:bg-gray-900">
         <h2 className="text-xl font-semibold mb-2">Add New Post</h2>
+
         <input
           className="border p-2 w-full mb-2"
           placeholder="Title"
@@ -143,9 +114,13 @@ function AdminPanel() {
           className="border p-2 w-full mb-2"
           placeholder="Image URL"
           value={newImage}
-          onChange={(e) => setNewImage(e.target.value)}
+          onChange={(e) => setNewImage(e.target.value)} // <-- typing works now
         />
-        <button className="bg-green-600 text-white px-4 py-2 rounded" onClick={handleAddPost}>
+
+        <button
+          className="bg-green-600 text-white px-4 py-2 rounded"
+          onClick={handleAddPost}
+        >
           Add Post
         </button>
       </div>
@@ -156,26 +131,25 @@ function AdminPanel() {
           <h2 className="text-xl font-semibold">{post.title}</h2>
           <p className="mb-1">{post.content}</p>
           <p className="mb-1 text-sm text-gray-500">Game: {post.game}</p>
-          {post.image_url && <img src={post.image_url} alt={post.title} className="mb-2 max-w-xs" />}
+          {post.image_url && (
+            <img src={post.image_url} alt={post.title} className="mb-2 max-w-xs" />
+          )}
           <div className="flex gap-2">
-            <button className="bg-red-500 text-white px-3 py-1 rounded" onClick={() => handleDelete(post.id)}>
+            <button
+              className="bg-red-500 text-white px-3 py-1 rounded"
+              onClick={() => handleDelete(post.id)}
+            >
               Delete
             </button>
-            <button className="bg-blue-500 text-white px-3 py-1 rounded" onClick={() => handleUpdate(post)}>
+            <button
+              className="bg-blue-500 text-white px-3 py-1 rounded"
+              onClick={() => handleUpdate(post)}
+            >
               Edit
             </button>
           </div>
         </div>
       ))}
     </div>
-  );
-}
-
-// Export page
-export default function Page() {
-  return (
-    <AdminPageWrapper>
-      <AdminPanel />
-    </AdminPageWrapper>
   );
 }

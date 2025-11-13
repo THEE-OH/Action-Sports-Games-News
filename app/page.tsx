@@ -1,50 +1,100 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { formatDistanceToNow } from "date-fns";
 
-export default async function Home() {
-  const { data: posts, error } = await supabase
-    .from("posts")
-    .select("*")
-    .order("created_at", { ascending: false });
+interface Post {
+  id: string;
+  title: string;
+  content: string;
+  game: string;
+  image_url: string;
+  created_at: string;
+}
 
-  if (error) {
-    return <div className="min-h-screen p-8 text-red-600">Error loading posts: {error.message}</div>;
-  }
+export default function ViewerPage() {
+  const [posts, setPosts] = useState<Post[]>([]);
+
+  // Request browser notification permission
+  useEffect(() => {
+    if ("Notification" in window) {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // Fetch initial posts
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  const fetchPosts = async () => {
+    const { data } = await supabase
+      .from<Post>("posts")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (data) setPosts(data);
+  };
+
+  // Real-time subscription for new posts
+  useEffect(() => {
+    const subscription = supabase
+      .channel("public:posts")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "posts" },
+        (payload) => {
+          const newPost = payload.new as Post;
+          setPosts((prev) => [newPost, ...prev]);
+
+          if (Notification.permission === "granted") {
+            new Notification(`New post: ${newPost.title}`, {
+              body: newPost.content,
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, []);
 
   return (
-    <div className="min-h-screen p-8 bg-zinc-50 dark:bg-black font-sans">
-      <h1 className="text-4xl font-bold mb-8 text-center text-black dark:text-white">
-        Action Sports News
+    <div className="bg-gray-900 min-h-screen py-8 px-4 sm:px-6 lg:px-8">
+      <h1 className="text-4xl font-extrabold text-white px-6 py-4 rounded-lg shadow-md mb-8 text-center sm:text-left bg-gray-800">
+        Velocity News
       </h1>
 
-      {posts.length === 0 ? (
-        <p className="text-center text-zinc-700 dark:text-zinc-300">No posts yet.</p>
-      ) : (
-        <div className="space-y-6 max-w-3xl mx-auto">
-          {posts.map((post) => (
-            <div
-              key={post.id}
-              className="border rounded-lg p-4 bg-white dark:bg-gray-900 shadow"
-            >
-              <h2 className="text-xl font-semibold mb-2 text-black dark:text-white">
+      <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        {posts.map((post) => (
+          <div
+            key={post.id}
+            className="bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300"
+          >
+            <div className="flex justify-between items-start">
+              <h2 className="text-lg md:text-xl font-bold text-white">
                 {post.title}
               </h2>
-              {post.game && (
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  Game: {post.game}
-                </p>
-              )}
-              <p className="text-zinc-700 dark:text-zinc-300">{post.content}</p>
-              {post.image_url && (
-                <img
-                  src={post.image_url}
-                  alt={post.title}
-                  className="mt-2 rounded w-full"
-                />
+              {post.created_at && (
+                <span className="text-gray-400 text-xs md:text-sm">
+                  {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
+                </span>
               )}
             </div>
-          ))}
-        </div>
-      )}
+            <p className="mt-2 text-gray-300 text-sm md:text-base">{post.content}</p>
+            {post.image_url && (
+              <img
+                src={post.image_url}
+                alt={post.title}
+                className="mt-4 w-full h-48 object-cover rounded-lg"
+              />
+            )}
+            <p className="mt-2 text-gray-400 text-xs">Game: {post.game}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
