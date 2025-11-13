@@ -9,92 +9,84 @@ interface Post {
   title: string;
   content: string;
   game: string;
-  image_url: string;
+  image_url?: string;
   created_at: string;
 }
 
 export default function ViewerPage() {
   const [posts, setPosts] = useState<Post[]>([]);
 
-  // Request browser notification permission
-  useEffect(() => {
-    if ("Notification" in window) {
-      Notification.requestPermission();
-    }
-  }, []);
-
-  // Fetch initial posts
-  useEffect(() => {
-    fetchPosts();
-  }, []);
-
+  // Fetch posts from Supabase
   const fetchPosts = async () => {
     const { data } = await supabase
-      .from<Post>("posts")
+      .from<"posts", Post>("posts")
       .select("*")
       .order("created_at", { ascending: false });
     if (data) setPosts(data);
   };
 
-  // Real-time subscription for new posts
   useEffect(() => {
-    const subscription = supabase
-      .channel("public:posts")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "posts" },
-        (payload) => {
-          const newPost = payload.new as Post;
-          setPosts((prev) => [newPost, ...prev]);
+    fetchPosts();
 
-          if (Notification.permission === "granted") {
-            new Notification(`New post: ${newPost.title}`, {
-              body: newPost.content,
+    // Register service worker for notifications
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").then(() => {
+        console.log("Service Worker registered");
+      });
+    }
+
+    // Request notification permission
+    if ("Notification" in window && Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+
+    // Polling for new posts every 10 seconds
+    const interval = setInterval(async () => {
+      const { data } = await supabase
+        .from<"posts", Post>("posts")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (data) {
+        if (data.length > posts.length) {
+          const newPosts = data.slice(0, data.length - posts.length);
+          newPosts.forEach((post) => {
+            new Notification("New Post: " + post.title, {
+              body: post.content,
             });
-          }
+          });
         }
-      )
-      .subscribe();
+        setPosts(data);
+      }
+    }, 10000);
 
-    return () => {
-      supabase.removeChannel(subscription);
-    };
+    return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="bg-gray-900 min-h-screen py-8 px-4 sm:px-6 lg:px-8">
-      <h1 className="text-4xl font-extrabold text-white px-6 py-4 rounded-lg shadow-md mb-8 text-center sm:text-left bg-gray-800">
-        Velocity News
-      </h1>
-
-      <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+    <div className="min-h-screen bg-gray-900 text-white font-sans">
+      <header className="text-center py-8 text-4xl font-bold">Velocity News</header>
+      <main className="max-w-3xl mx-auto p-4 flex flex-col gap-6">
         {posts.map((post) => (
-          <div
-            key={post.id}
-            className="bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300"
-          >
+          <div key={post.id} className="bg-gray-800 rounded-lg p-4 shadow-lg">
             <div className="flex justify-between items-start">
-              <h2 className="text-lg md:text-xl font-bold text-white">
-                {post.title}
-              </h2>
-              {post.created_at && (
-                <span className="text-gray-400 text-xs md:text-sm">
-                  {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
-                </span>
-              )}
+              <h2 className="text-2xl font-bold text-white">{post.title}</h2>
+              <span className="text-gray-400 text-sm">
+                {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
+              </span>
             </div>
-            <p className="mt-2 text-gray-300 text-sm md:text-base">{post.content}</p>
+            <p className="text-gray-200 mt-2">{post.content}</p>
             {post.image_url && (
               <img
                 src={post.image_url}
                 alt={post.title}
-                className="mt-4 w-full h-48 object-cover rounded-lg"
+                className="mt-2 max-w-full rounded-md"
               />
             )}
-            <p className="mt-2 text-gray-400 text-xs">Game: {post.game}</p>
+            <p className="text-gray-400 mt-1 text-sm">Game: {post.game}</p>
           </div>
         ))}
-      </div>
+        {posts.length === 0 && <p className="text-gray-400 text-center">No posts yet.</p>}
+      </main>
     </div>
   );
 }
