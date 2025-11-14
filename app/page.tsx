@@ -41,29 +41,26 @@ export default function ViewerPage() {
       });
     }
 
-    // Load AdSense ads **after consent is given**
+    // Load AdSense ads after consent is given
     const loadAds = () => {
-      if (
-        typeof window !== "undefined" &&
-        window.Cookiebot &&
-        window.Cookiebot.consent &&
-        window.Cookiebot.consent.given
-      ) {
-        try {
-          (window.adsbygoogle = window.adsbygoogle || []).push({});
-        } catch (e) {
-          console.error("Adsense push error:", e);
-        }
+      try {
+        (window as any).adsbygoogle = (window as any).adsbygoogle || [];
+        (window as any).adsbygoogle.push({});
+      } catch (e) {
+        console.error("Adsense push error:", e);
       }
     };
 
-    // Check every 1 second if consent has been given
+    // Check every 1 second if Cookiebot consent has been given
     const interval = setInterval(() => {
-      if (window.Cookiebot && window.Cookiebot.consent && window.Cookiebot.consent.given) {
+      const win = window as any;
+      if (win.Cookiebot && win.Cookiebot.consent && win.Cookiebot.consent.given) {
         loadAds();
         clearInterval(interval);
       }
     }, 1000);
+
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -90,7 +87,7 @@ export default function ViewerPage() {
       </header>
 
       {/* Posts */}
-      <main className="flex flex-col gap-6 mb-16"> {/* add margin-bottom to avoid overlapping bottom ad */}
+      <main className="flex flex-col gap-6 mb-16">
         {posts.length === 0 && <p className="text-gray-400">No posts yet.</p>}
 
         {posts.map((post) => (
@@ -121,12 +118,12 @@ export default function ViewerPage() {
         ))}
       </main>
 
-      {/* Bottom ad placeholder (redundant fallback, still visible if Cookiebot gives consent) */}
+      {/* Bottom ad placeholder */}
       <div className="fixed bottom-0 left-0 w-full flex justify-center z-40 p-1 bg-gray-900">
         <ins
           className="adsbygoogle"
           style={{ display: "block" }}
-          data-ad-slot="1234567890" // replace with your actual Ad unit ID
+          data-ad-slot="1234567890" // replace with your actual Ad unit ID later
           data-ad-format="auto"
           data-full-width-responsive="true"
         ></ins>
