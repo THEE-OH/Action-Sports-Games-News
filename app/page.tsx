@@ -20,7 +20,7 @@ export default function ViewerPage() {
   const fetchPosts = async () => {
     try {
       const { data, error } = await supabase
-        .from<any, Post>("posts") // <-- FIX: Provide 2 type arguments
+        .from<any, Post>("posts") // TypeScript v2 fix
         .select("*")
         .order("created_at", { ascending: false });
 
@@ -43,7 +43,7 @@ export default function ViewerPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white font-sans p-6">
+    <div className="min-h-screen bg-gray-900 text-white font-sans p-6 pb-[80px]">
       {/* Header */}
       <header className="flex flex-col items-center mb-8">
         <h1 className="text-5xl font-bold text-white mb-4">Velocity News</h1>
