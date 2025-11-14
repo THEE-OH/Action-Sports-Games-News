@@ -1,8 +1,14 @@
 "use client";
 
 import "./globals.css";
-import { useEffect, useState } from "react";
+import { useEffect, useState, ReactNode } from "react";
 
+// Define props type for RootLayout
+type RootLayoutProps = {
+  children: ReactNode;
+};
+
+// Cookie consent banner component
 function CookieBanner() {
   const [show, setShow] = useState(false);
 
@@ -34,12 +40,13 @@ function CookieBanner() {
   );
 }
 
-export default function RootLayout({ children }) {
+// Root layout component
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en">
       <body className="bg-[#121212] text-white">
-        <CookieBanner />
         {children}
+        <CookieBanner />
       </body>
     </html>
   );
