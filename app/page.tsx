@@ -18,11 +18,17 @@ export default function ViewerPage() {
 
   // Fetch posts from Supabase
   const fetchPosts = async () => {
-    const { data } = await supabase
-      .from<Post>("posts")
-      .select("*")
-      .order("created_at", { ascending: false }); // newest first
-    if (data) setPosts(data);
+    try {
+      const { data, error } = await supabase
+        .from<any, Post>("posts") // <-- FIX: Provide 2 type arguments
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      if (data) setPosts(data);
+    } catch (err) {
+      console.error("Error fetching posts:", err);
+    }
   };
 
   useEffect(() => {
