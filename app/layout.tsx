@@ -9,7 +9,7 @@ type RootLayoutProps = {
   children: ReactNode;
 };
 
-// Cookie consent banner
+// Cookie consent banner (for users outside CMP or fallback)
 function CookieBanner() {
   const [show, setShow] = useState(false);
 
@@ -52,7 +52,18 @@ export default function RootLayout({ children }: RootLayoutProps) {
           content="ca-pub-4597958293743642"
         />
 
-        {/* Google AdSense Script (latest recommended format) */}
+        {/* Cookiebot CMP Script */}
+        <Script
+          id="cookiebot"
+          type="text/javascript"
+          strategy="afterInteractive"
+          src="https://consent.cookiebot.com/uc.js"
+          data-cbid="10826b76-0c7a-4bd6-99c9-df5f4242111b"
+          data-blockingmode="auto"
+          async
+        />
+
+        {/* Google AdSense Script */}
         <Script
           strategy="afterInteractive"
           async
@@ -68,7 +79,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           <ins
             className="adsbygoogle"
             style={{ display: "block" }}
-            data-ad-slot="1234567890" // replace with your Ad unit ID later
+            data-ad-slot="1234567890" // replace with your actual Ad unit ID
             data-ad-format="auto"
             data-full-width-responsive="true"
           ></ins>

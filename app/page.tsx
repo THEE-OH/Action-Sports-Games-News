@@ -20,7 +20,7 @@ export default function ViewerPage() {
   const fetchPosts = async () => {
     try {
       const { data, error } = await supabase
-        .from<any, Post>("posts") // TypeScript v2 fix
+        .from<any, Post>("posts")
         .select("*")
         .order("created_at", { ascending: false });
 
@@ -40,10 +40,34 @@ export default function ViewerPage() {
         console.log("Service Worker registered");
       });
     }
+
+    // Load AdSense ads **after consent is given**
+    const loadAds = () => {
+      if (
+        typeof window !== "undefined" &&
+        window.Cookiebot &&
+        window.Cookiebot.consent &&
+        window.Cookiebot.consent.given
+      ) {
+        try {
+          (window.adsbygoogle = window.adsbygoogle || []).push({});
+        } catch (e) {
+          console.error("Adsense push error:", e);
+        }
+      }
+    };
+
+    // Check every 1 second if consent has been given
+    const interval = setInterval(() => {
+      if (window.Cookiebot && window.Cookiebot.consent && window.Cookiebot.consent.given) {
+        loadAds();
+        clearInterval(interval);
+      }
+    }, 1000);
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white font-sans p-6 pb-[80px]">
+    <div className="min-h-screen bg-gray-900 text-white font-sans p-6">
       {/* Header */}
       <header className="flex flex-col items-center mb-8">
         <h1 className="text-5xl font-bold text-white mb-4">Velocity News</h1>
@@ -66,7 +90,7 @@ export default function ViewerPage() {
       </header>
 
       {/* Posts */}
-      <main className="flex flex-col gap-6">
+      <main className="flex flex-col gap-6 mb-16"> {/* add margin-bottom to avoid overlapping bottom ad */}
         {posts.length === 0 && <p className="text-gray-400">No posts yet.</p>}
 
         {posts.map((post) => (
@@ -96,6 +120,17 @@ export default function ViewerPage() {
           </div>
         ))}
       </main>
+
+      {/* Bottom ad placeholder (redundant fallback, still visible if Cookiebot gives consent) */}
+      <div className="fixed bottom-0 left-0 w-full flex justify-center z-40 p-1 bg-gray-900">
+        <ins
+          className="adsbygoogle"
+          style={{ display: "block" }}
+          data-ad-slot="1234567890" // replace with your actual Ad unit ID
+          data-ad-format="auto"
+          data-full-width-responsive="true"
+        ></ins>
+      </div>
     </div>
   );
 }
