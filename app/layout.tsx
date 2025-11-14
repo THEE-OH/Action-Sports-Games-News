@@ -46,6 +46,12 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en">
       <head>
+        {/* Google AdSense Verification */}
+        <meta
+          name="google-adsense-account"
+          content="ca-pub-4597958293743642"
+        />
+
         {/* Google AdSense Script (latest recommended format) */}
         <Script
           strategy="afterInteractive"
